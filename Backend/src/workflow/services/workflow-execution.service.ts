@@ -54,12 +54,13 @@ export class WorkflowExecutionService {
     }
 
     // Generate idempotency key
-    const idempotencyKey = this.idempotencyService.generateWorkflowIdempotencyKey(
-      type,
-      userId || 'anonymous',
-      input,
-      context,
-    );
+    const idempotencyKey =
+      this.idempotencyService.generateWorkflowIdempotencyKey(
+        type,
+        userId || 'anonymous',
+        input,
+        context,
+      );
 
     // Check for existing workflow with same idempotency key
     const existingWorkflow = await this.workflowRepository.findOne({
@@ -68,7 +69,9 @@ export class WorkflowExecutionService {
     });
 
     if (existingWorkflow) {
-      this.logger.log(`Found existing workflow ${existingWorkflow.id} for idempotency key: ${idempotencyKey}`);
+      this.logger.log(
+        `Found existing workflow ${existingWorkflow.id} for idempotency key: ${idempotencyKey}`,
+      );
       return existingWorkflow;
     }
 
@@ -114,11 +117,16 @@ export class WorkflowExecutionService {
   async executeWorkflow(workflow: Workflow): Promise<void> {
     const definition = this.getWorkflowDefinition(workflow.type);
     if (!definition) {
-      throw new Error(`Workflow definition not found for type: ${workflow.type}`);
+      throw new Error(
+        `Workflow definition not found for type: ${workflow.type}`,
+      );
     }
 
     // Update workflow state to RUNNING
-    const transition = this.stateMachine.transitionWorkflow(workflow.state, WorkflowState.RUNNING);
+    const transition = this.stateMachine.transitionWorkflow(
+      workflow.state,
+      WorkflowState.RUNNING,
+    );
     if (!transition.success) {
       throw new Error(`Cannot start workflow: ${transition.error}`);
     }
@@ -131,21 +139,21 @@ export class WorkflowExecutionService {
 
     try {
       await this.executeSteps(workflow, definition);
-      
+
       // Mark workflow as completed
       workflow.state = WorkflowState.COMPLETED;
       workflow.completedAt = new Date();
       await this.workflowRepository.save(workflow);
-      
+
       this.logger.log(`Workflow completed successfully: ${workflow.id}`);
     } catch (error) {
       this.logger.error(`Workflow failed: ${workflow.id}`, error);
-      
+
       workflow.state = WorkflowState.FAILED;
       workflow.failedAt = new Date();
       workflow.failureReason = error.message;
       await this.workflowRepository.save(workflow);
-      
+
       throw error;
     }
   }
@@ -153,7 +161,10 @@ export class WorkflowExecutionService {
   /**
    * Execute all steps in a workflow
    */
-  private async executeSteps(workflow: Workflow, definition: WorkflowDefinition): Promise<void> {
+  private async executeSteps(
+    workflow: Workflow,
+    definition: WorkflowDefinition,
+  ): Promise<void> {
     const steps = await this.stepRepository.find({
       where: { workflowId: workflow.id },
       order: { stepIndex: 'ASC' },
@@ -175,10 +186,15 @@ export class WorkflowExecutionService {
     step: WorkflowStep,
     stepDefinition: StepDefinition,
   ): Promise<void> {
-    this.logger.debug(`Executing step: ${step.stepName} for workflow: ${workflow.id}`);
+    this.logger.debug(
+      `Executing step: ${step.stepName} for workflow: ${workflow.id}`,
+    );
 
     // Update step state to RUNNING
-    const transition = this.stateMachine.transitionStep(step.state, StepState.RUNNING);
+    const transition = this.stateMachine.transitionStep(
+      step.state,
+      StepState.RUNNING,
+    );
     if (!transition.success) {
       throw new Error(`Cannot execute step: ${transition.error}`);
     }
@@ -230,30 +246,41 @@ export class WorkflowExecutionService {
       await this.stepRepository.save(step);
 
       this.logger.debug(`Step completed successfully: ${step.stepName}`);
-
     } catch (error) {
       this.logger.error(`Step failed: ${step.stepName}`, error);
-      
+
       step.state = StepState.FAILED;
       step.failedAt = new Date();
       step.failureReason = error.message;
       step.retryCount += 1;
-      
+
       // Check if we should retry
-      if (this.stateMachine.shouldRetry(StepState.FAILED, step.retryCount, step.maxRetries)) {
-        step.nextRetryAt = this.stateMachine.calculateNextRetryTime(step.retryCount);
+      if (
+        this.stateMachine.shouldRetry(
+          StepState.FAILED,
+          step.retryCount,
+          step.maxRetries,
+        )
+      ) {
+        step.nextRetryAt = this.stateMachine.calculateNextRetryTime(
+          step.retryCount,
+        );
         await this.stepRepository.save(step);
-        
-        this.logger.log(`Scheduling retry for step: ${step.stepName}, attempt: ${step.retryCount}`);
-        
+
+        this.logger.log(
+          `Scheduling retry for step: ${step.stepName}, attempt: ${step.retryCount}`,
+        );
+
         // Wait for retry delay
         await this.delay(step.nextRetryAt.getTime() - Date.now());
-        
+
         // Retry the step
         await this.executeStep(workflow, step, stepDefinition);
       } else {
         await this.stepRepository.save(step);
-        throw new Error(`Step ${step.stepName} failed after ${step.retryCount} retries: ${error.message}`);
+        throw new Error(
+          `Step ${step.stepName} failed after ${step.retryCount} retries: ${error.message}`,
+        );
       }
     }
   }
@@ -279,21 +306,25 @@ export class WorkflowExecutionService {
   /**
    * Prepare step input based on workflow input and previous step outputs
    */
-  private async prepareStepInput(workflow: Workflow, step: WorkflowStep, stepDefinition: StepDefinition): Promise<any> {
+  private async prepareStepInput(
+    workflow: Workflow,
+    step: WorkflowStep,
+    stepDefinition: StepDefinition,
+  ): Promise<any> {
     // Start with workflow input
     const stepInput = { ...workflow.input };
 
     // Add outputs from previous steps
     if (step.stepIndex > 0) {
       const previousSteps = await this.stepRepository.find({
-        where: { 
+        where: {
           workflowId: workflow.id,
           stepIndex: LessThan(step.stepIndex),
         },
         order: { stepIndex: 'ASC' },
       });
 
-      previousSteps.forEach(prevStep => {
+      previousSteps.forEach((prevStep) => {
         if (prevStep.output) {
           stepInput[prevStep.stepName] = prevStep.output;
         }
@@ -330,7 +361,9 @@ export class WorkflowExecutionService {
     await this.workflowRepository.save(workflow);
 
     // Find the failed step and retry from there
-    const failedStep = workflow.steps.find(step => step.state === StepState.FAILED);
+    const failedStep = workflow.steps.find(
+      (step) => step.state === StepState.FAILED,
+    );
     if (failedStep) {
       failedStep.state = StepState.PENDING;
       failedStep.failedAt = undefined;
@@ -354,7 +387,10 @@ export class WorkflowExecutionService {
       throw new Error(`Workflow not found: ${workflowId}`);
     }
 
-    const transition = this.stateMachine.transitionWorkflow(workflow.state, WorkflowState.CANCELLED);
+    const transition = this.stateMachine.transitionWorkflow(
+      workflow.state,
+      WorkflowState.CANCELLED,
+    );
     if (!transition.success) {
       throw new Error(`Cannot cancel workflow: ${transition.error}`);
     }
@@ -378,6 +414,6 @@ export class WorkflowExecutionService {
    * Helper function to delay execution
    */
   private async delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

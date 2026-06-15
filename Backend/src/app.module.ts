@@ -29,7 +29,6 @@ import { AuditLog } from './audit/audit.entity';
 import { VoiceJob } from './voice/entities/voice-job.entity';
 import { ThrottleModule } from './throttle/throttle.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -45,8 +44,7 @@ import { ThrottleModule } from './throttle/throttle.module';
         port: configService.get('DB_PORT') || 5432,
         username: configService.get('DB_USERNAME') || 'postgres',
         password: configService.get('DB_PASSWORD') || 'password',
-        database:
-          configService.get('DB_DATABASE') || 'stellara_workflows',
+        database: configService.get('DB_DATABASE') || 'stellara_workflows',
         entities: [
           Workflow,
           WorkflowStep,
