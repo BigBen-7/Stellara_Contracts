@@ -55,7 +55,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    */
   async refreshTTL(key: string, ttlSeconds: number): Promise<boolean> {
     const result = await this.client.expire(key, ttlSeconds);
-    return result === true || (result as unknown as number) === 1;
+    return result === 1;
   }
 }
 
