@@ -32,6 +32,7 @@ fn test_cross_chain_replay_rejected() {
         timestamp: 1000,
         commitment_root: BytesN::from_array(&env, &[2u8; 32]),
     };
+    client.update_light_client(&header);
 
     let proof = Bytes::from_array(&env, &[3u8; 32]);
     let first_verify = client.verify_message(&message_id, &header, &proof);

@@ -314,6 +314,7 @@ mod tests {
             timestamp: 1000,
             commitment_root: BytesN::from_array(&env, &[2u8; 32]),
         };
+        client.update_light_client(&header);
 
         let proof = Bytes::from_array(&env, &[3u8; 32]);
         let message_id = client.verify_message(
