@@ -1539,9 +1539,6 @@ impl UpgradeableTradingContract {
         if price <= 0 {
             return Err(TradeError::InvalidPrice);
         }
-        if pair.to_string().is_empty() {
-            return Err(TradeError::InvalidAmount); // Reusing existing error for invalid pair
-        }
         if amount_commitment.to_array().iter().all(|&b| b == 0) {
             return Err(TradeError::InvalidCommitment);
         }

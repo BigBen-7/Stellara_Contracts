@@ -133,19 +133,7 @@ impl VerifiableCredentialsContract {
         require_auth!(&caller);
 
         // Validate inputs
-        if issuer_did.to_string().is_empty() {
-            return Err(VCError::InvalidCredential);
-        }
-        if subject_did.to_string().is_empty() {
-            return Err(VCError::InvalidSubject);
-        }
         if proof.proof_value.is_empty() {
-            return Err(VCError::InvalidProof);
-        }
-        if proof.verification_method.to_string().is_empty() {
-            return Err(VCError::InvalidProof);
-        }
-        if proof.proof_purpose.to_string().is_empty() {
             return Err(VCError::InvalidProof);
         }
         if let Some(exp) = expiration_date {
@@ -236,18 +224,6 @@ impl VerifiableCredentialsContract {
         // Verify proof (simplified - in production, implement proper cryptographic verification)
         if credential.proof.proof_value.is_empty() {
             return Err(VCError::InvalidProof);
-        }
-        if credential.proof.verification_method.to_string().is_empty() {
-            return Err(VCError::InvalidProof);
-        }
-        if credential.proof.proof_purpose.to_string().is_empty() {
-            return Err(VCError::InvalidProof);
-        }
-        if credential.issuer.to_string().is_empty() {
-            return Err(VCError::InvalidCredential);
-        }
-        if credential.credential_subject.id.to_string().is_empty() {
-            return Err(VCError::InvalidSubject);
         }
 
         Ok(true)
